@@ -34,6 +34,14 @@ contract HoneyTokenFactory {
         owner = _owner;
     }
 
+    function createMemecoin(bytes calldata data) public returns(bytes) {
+        Token memory newToken = abi.decode(data, (Token));
+
+        bytes32 salt = keccak256(abi.encodePacked(data, msg.sender));
+
+
+    }
+
 
 
 }
