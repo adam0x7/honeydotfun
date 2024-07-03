@@ -22,6 +22,8 @@ contract HoneyTokenFactory is Owned {
 
     address public constant beraCreate2Factory = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
 
+    address bera;
+
     address v2Pool;
 
     struct Token {
@@ -38,6 +40,7 @@ contract HoneyTokenFactory is Owned {
 
     constructor() Owned(msg.sender) {}
 
+    //TODO need to add bera token deposit
     function createMemecoin(bytes calldata data) external returns(token) {
         Token memory newToken = abi.decode(data, (Token));
 
@@ -57,6 +60,11 @@ contract HoneyTokenFactory is Owned {
 
         return token;
     }
+
+    function swap() {
+
+    }
+
 
 
 
