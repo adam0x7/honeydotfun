@@ -23,6 +23,12 @@ interface ICreate2Deployer {
     function getCreate2Address(uint256 salt, bytes32 initCodeHash) external pure returns (address);
 }
 
+contract Memecoin is ERC20 {
+    constructor(string memory name, string memory symbol, uint256 initialSupply) ERC20(name, symbol) {
+        _mint(msg.sender, initialSupply);
+    }
+}
+
 contract HoneyTokenFactory is Owned {
 
     event TokenCreated(uint256 indexed id, string name, string memeUrl, address token, address deployer, address swapPool);
@@ -41,6 +47,7 @@ contract HoneyTokenFactory is Owned {
         address token;
         address deployer;
         address swapPool;
+        uint256 supply;
     }
 
     mapping(uint256 => Token) public tokens;
@@ -54,7 +61,7 @@ contract HoneyTokenFactory is Owned {
         Token memory newToken = abi.decode(data, (Token));
 
         // Deploy new ERC20 token
-        ERC20 token = new ERC20(newToken.name, newToken.symbol);
+        Memecoin token = new Memecoin(newToken.name, newToken.symbol, newToken.supply);
 
 
         bytes memory lilUniswapV2InitCode = abi.encodePacked(
@@ -63,7 +70,7 @@ contract HoneyTokenFactory is Owned {
         );
         uint256 poolSalt = uint256(keccak256(abi.encodePacked(tokenCount, msg.sender, newToken.name, newToken.symbol)));
 
-        address swapPool = CREATE2_FACTORY.deployWithCreate2(poolSalt, lilUniswapV2InitCode);
+        address swapPool = ICreate2Deployer(CREATE2_FACTORY).deployWithCreate2(poolSalt, lilUniswapV2InitCode);
 
         newToken.token = token;
         newToken.deployer = msg.sender;
