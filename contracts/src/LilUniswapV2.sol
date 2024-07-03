@@ -2,6 +2,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "solmate/utils/FixedPointMathLib.sol";
 
 interface IWBERA is IERC20 {
     function deposit() external payable;
@@ -9,12 +10,14 @@ interface IWBERA is IERC20 {
 }
 
 contract LilUniswapV2 is ERC20 {
+    using FixedPointMathLib for uint256;
+
     IWBERA public immutable wbera;
     IERC20 public immutable token;
-    uint public reserve0; // WBERA reserve
-    uint public reserve1; // token reserve
+    uint public reserve0;
+    uint public reserve1;
 
-    constructor(address _token, address _wbera) ERC20("MiniUniLP", "MLPT") {
+    constructor(address _token, address _wbera) ERC20("LILUNI", "LU") {
         token = IERC20(_token);
         wbera = IWBERA(_wbera);
     }
@@ -26,9 +29,9 @@ contract LilUniswapV2 is ERC20 {
         uint256 amount1 = balance1 - reserve1;
 
         if (totalSupply() == 0) {
-            liquidity = Math.sqrt(amount0 * amount1);
+            liquidity = (amount0 * amount1).sqrt();
         } else {
-            liquidity = Math.min(
+            liquidity = min(
                 (amount0 * totalSupply()) / reserve0,
                 (amount1 * totalSupply()) / reserve1
             );
@@ -39,6 +42,10 @@ contract LilUniswapV2 is ERC20 {
 
         _update(balance0, balance1);
         return liquidity;
+    }
+
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
     }
 
     function removeLiquidity(uint liquidity) external returns (uint256 amount0, uint256 amount1) {

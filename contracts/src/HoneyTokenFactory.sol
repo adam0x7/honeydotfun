@@ -52,29 +52,15 @@ contract HoneyTokenFactory is Owned {
             abi.encode(newToken.name, newToken.symbol, newToken.decimals)
         );
 
-        (bool success, bytes memory returnData) = CREATE2_FACTORY.call(
-            abi.encodePacked(
-                bytes4(keccak256("deployWithCreate2(uint256,bytes)")),
-                abi.encode(salt, initCode)
-            )
-        );
-        require(success, "Token deployment failed");
-        token = abi.decode(returnData, (address));
+        address token = CREATE2_FACTORY.deployWithCreate2(salt, initCode);
 
-        bytes memory poolInitCode = abi.encodePacked(
-            type(MiniUniswapV2).creationCode,
+        bytes memory lilUniswapV2InitCode = abi.encodePacked(
+            type(LilUniswapV2).creationCode,
             abi.encode(token, WBERA_ADDRESS)
         );
         uint256 poolSalt = uint256(keccak256(abi.encodePacked("pool", salt)));
 
-        (success, returnData) = CREATE2_FACTORY.call(
-            abi.encodePacked(
-                bytes4(keccak256("deployWithCreate2(uint256,bytes)")),
-                abi.encode(poolSalt, poolInitCode)
-            )
-        );
-        require(success, "Pool deployment failed");
-        swapPool = abi.decode(returnData, (address));
+        address swapPool = CREATE2_FACTORY.deployWithCreate2(poolSalt, lilUniswapV2InitCode);
 
         newToken.token = token;
         newToken.deployer = msg.sender;
@@ -92,7 +78,7 @@ contract HoneyTokenFactory is Owned {
         require(token.token != address(0), "Token does not exist");
 
         require(wbera.transferFrom(msg.sender, token.swapPool, wberaAmount), "WBERA transfer failed");
-        require(ERC20(token.token).transferFrom(msg.sender, token.swapPool, memeAmount), "Memecoin transfer failed");
+        require(IERC20(token.token).transferFrom(msg.sender, token.swapPool, memeAmount), "Memecoin transfer failed");
 
         uint256 liquidity = ILilUniswapV2(token.swapPool).addLiquidity();
 
