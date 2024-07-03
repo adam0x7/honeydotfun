@@ -72,13 +72,13 @@ contract HoneyTokenFactory is Owned {
 
         address swapPool = ICreate2Deployer(CREATE2_FACTORY).deployWithCreate2(poolSalt, lilUniswapV2InitCode);
 
-        newToken.token = token;
+        newToken.token = address(token);
         newToken.deployer = msg.sender;
         newToken.swapPool = swapPool;
         newToken.id = ++tokenCount;
         tokens[newToken.id] = newToken;
 
-        emit TokenCreated(newToken.id, newToken.name, newToken.memeUrl, token, msg.sender, swapPool);
+        emit TokenCreated(newToken.id, newToken.name, newToken.memeUrl, address(token), msg.sender, swapPool);
 
         return (address(token), swapPool);
     }
