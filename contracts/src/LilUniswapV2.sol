@@ -2,6 +2,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "solmate/utils/FixedPointMathLib.sol";
 
 interface IWBERA is IERC20 {
     function deposit() external payable;
@@ -9,26 +10,28 @@ interface IWBERA is IERC20 {
 }
 
 contract LilUniswapV2 is ERC20 {
-    IWBERA public immutable wbera;
-    IERC20 public immutable token;
-    uint public reserve0; // WBERA reserve
-    uint public reserve1; // token reserve
+    using FixedPointMathLib for uint256;
 
-    constructor(address _token, address _wbera) ERC20("MiniUniLP", "MLPT") {
-        token = IERC20(_token);
+    IWBERA public immutable wbera;
+    IERC20 public immutable token1;
+    uint public reserve0;
+    uint public reserve1;
+
+    constructor(address _token, address _wbera) ERC20("LILUNI", "LU") {
+        token1 = IERC20(_token);
         wbera = IWBERA(_wbera);
     }
 
     function addLiquidity() external returns (uint256 liquidity) {
         uint256 balance0 = wbera.balanceOf(address(this));
-        uint256 balance1 = token.balanceOf(address(this));
+        uint256 balance1 = token1.balanceOf(address(this));
         uint256 amount0 = balance0 - reserve0;
         uint256 amount1 = balance1 - reserve1;
 
         if (totalSupply() == 0) {
-            liquidity = Math.sqrt(amount0 * amount1);
+            liquidity = (amount0 * amount1).sqrt();
         } else {
-            liquidity = Math.min(
+            liquidity = min(
                 (amount0 * totalSupply()) / reserve0,
                 (amount1 * totalSupply()) / reserve1
             );
@@ -41,6 +44,10 @@ contract LilUniswapV2 is ERC20 {
         return liquidity;
     }
 
+    function min(uint256 a, uint256 b) internal pure returns (uint256) {
+        return a < b ? a : b;
+    }
+
     function removeLiquidity(uint liquidity) external returns (uint256 amount0, uint256 amount1) {
         require(balanceOf(msg.sender) >= liquidity, "Insufficient liquidity");
         amount0 = (liquidity * reserve0) / totalSupply();
@@ -50,7 +57,7 @@ contract LilUniswapV2 is ERC20 {
         _update(reserve0 - amount0, reserve1 - amount1);
 
         wbera.transfer(msg.sender, amount0);
-        token.transfer(msg.sender, amount1);
+        token1.transfer(msg.sender, amount1);
         return (amount0, amount1);
     }
 
@@ -59,8 +66,8 @@ contract LilUniswapV2 is ERC20 {
         tokensBought = getAmountOut(wberaIn, reserve0, reserve1);
         require(tokensBought >= minTokens, "Insufficient output amount");
 
-        token.transfer(msg.sender, tokensBought);
-        _update(wbera.balanceOf(address(this)), token.balanceOf(address(this)));
+        token1.transfer(msg.sender, tokensBought);
+        _update(wbera.balanceOf(address(this)), token1.balanceOf(address(this)));
         return tokensBought;
     }
 
@@ -68,9 +75,9 @@ contract LilUniswapV2 is ERC20 {
         wberaBought = getAmountOut(tokenAmount, reserve1, reserve0);
         require(wberaBought >= minWBERA, "Insufficient output amount");
 
-        token.transferFrom(msg.sender, address(this), tokenAmount);
+        token1.transferFrom(msg.sender, address(this), tokenAmount);
         wbera.transfer(msg.sender, wberaBought);
-        _update(wbera.balanceOf(address(this)), token.balanceOf(address(this)));
+        _update(wbera.balanceOf(address(this)), token1.balanceOf(address(this)));
         return wberaBought;
     }
 

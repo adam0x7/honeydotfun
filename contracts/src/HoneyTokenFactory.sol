@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
+import {LilUniswapV2} from "./LilUniswapV2.sol";
 
 interface IWBERA {
     function transfer(address to, uint256 amount) external returns (bool);
@@ -14,6 +16,17 @@ interface ILilUniswapV2 {
     function addLiquidity() external returns (uint256 liquidity);
     function swapWBERAForToken(uint256 minTokens) external returns (uint256 tokensBought);
     function swapTokenForWBERA(uint256 tokenAmount, uint256 minWBERA) external returns (uint256 wberaBought);
+}
+
+interface ICreate2Deployer {
+    function deployWithCreate2(uint256 salt, bytes memory initCode) external returns (address);
+    function getCreate2Address(uint256 salt, bytes32 initCodeHash) external pure returns (address);
+}
+
+contract Memecoin is ERC20 {
+    constructor(string memory name, string memory symbol, uint256 initialSupply) ERC20(name, symbol) {
+        _mint(msg.sender, initialSupply);
+    }
 }
 
 contract HoneyTokenFactory is Owned {
@@ -34,6 +47,7 @@ contract HoneyTokenFactory is Owned {
         address token;
         address deployer;
         address swapPool;
+        uint256 supply;
     }
 
     mapping(uint256 => Token) public tokens;
@@ -43,48 +57,30 @@ contract HoneyTokenFactory is Owned {
         wbera = IWBERA(WBERA_ADDRESS);
     }
 
-    function createMemecoin(bytes calldata data) external returns(address token, address swapPool) {
+    function createMemecoin(bytes calldata data) external returns(address, address) {
         Token memory newToken = abi.decode(data, (Token));
 
-        uint256 salt = uint256(keccak256(abi.encodePacked(data, msg.sender)));
-        bytes memory initCode = abi.encodePacked(
-            type(ERC20).creationCode,
-            abi.encode(newToken.name, newToken.symbol, newToken.decimals)
-        );
+        // Deploy new ERC20 token
+        Memecoin token = new Memecoin(newToken.name, newToken.symbol, newToken.supply);
 
-        (bool success, bytes memory returnData) = CREATE2_FACTORY.call(
-            abi.encodePacked(
-                bytes4(keccak256("deployWithCreate2(uint256,bytes)")),
-                abi.encode(salt, initCode)
-            )
-        );
-        require(success, "Token deployment failed");
-        token = abi.decode(returnData, (address));
 
-        bytes memory poolInitCode = abi.encodePacked(
-            type(MiniUniswapV2).creationCode,
+        bytes memory lilUniswapV2InitCode = abi.encodePacked(
+            type(LilUniswapV2).creationCode,
             abi.encode(token, WBERA_ADDRESS)
         );
-        uint256 poolSalt = uint256(keccak256(abi.encodePacked("pool", salt)));
+        uint256 poolSalt = uint256(keccak256(abi.encodePacked(tokenCount, msg.sender, newToken.name, newToken.symbol)));
 
-        (success, returnData) = CREATE2_FACTORY.call(
-            abi.encodePacked(
-                bytes4(keccak256("deployWithCreate2(uint256,bytes)")),
-                abi.encode(poolSalt, poolInitCode)
-            )
-        );
-        require(success, "Pool deployment failed");
-        swapPool = abi.decode(returnData, (address));
+        address swapPool = ICreate2Deployer(CREATE2_FACTORY).deployWithCreate2(poolSalt, lilUniswapV2InitCode);
 
-        newToken.token = token;
+        newToken.token = address(token);
         newToken.deployer = msg.sender;
         newToken.swapPool = swapPool;
         newToken.id = ++tokenCount;
         tokens[newToken.id] = newToken;
 
-        emit TokenCreated(newToken.id, newToken.name, newToken.memeUrl, token, msg.sender, swapPool);
+        emit TokenCreated(newToken.id, newToken.name, newToken.memeUrl, address(token), msg.sender, swapPool);
 
-        return (token, swapPool);
+        return (address(token), swapPool);
     }
 
     function addLiquidity(uint256 tokenId, uint256 wberaAmount, uint256 memeAmount) external {
@@ -92,7 +88,7 @@ contract HoneyTokenFactory is Owned {
         require(token.token != address(0), "Token does not exist");
 
         require(wbera.transferFrom(msg.sender, token.swapPool, wberaAmount), "WBERA transfer failed");
-        require(ERC20(token.token).transferFrom(msg.sender, token.swapPool, memeAmount), "Memecoin transfer failed");
+        require(IERC20(token.token).transferFrom(msg.sender, token.swapPool, memeAmount), "Memecoin transfer failed");
 
         uint256 liquidity = ILilUniswapV2(token.swapPool).addLiquidity();
 
