@@ -19,8 +19,8 @@ contract MockToken is ERC20 {
     }
 }
 
-contract MiniUniswapV2PoolTest is Test {
-    MiniUniswapV2Pool public pool;
+contract LilUniswapV2Test is Test {
+    LilUniswapV2Pool public pool;
     IWBERA public wbera;
     MockToken public token;
     address public alice = address(1);

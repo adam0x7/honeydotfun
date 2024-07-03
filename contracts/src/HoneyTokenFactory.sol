@@ -10,7 +10,7 @@ interface IWBERA {
     function balanceOf(address account) external view returns (uint256);
 }
 
-interface IMiniUniswapV2 {
+interface ILilUniswapV2 {
     function addLiquidity() external returns (uint256 liquidity);
     function swapWBERAForToken(uint256 minTokens) external returns (uint256 tokensBought);
     function swapTokenForWBERA(uint256 tokenAmount, uint256 minWBERA) external returns (uint256 wberaBought);
@@ -94,7 +94,7 @@ contract HoneyTokenFactory is Owned {
         require(wbera.transferFrom(msg.sender, token.swapPool, wberaAmount), "WBERA transfer failed");
         require(ERC20(token.token).transferFrom(msg.sender, token.swapPool, memeAmount), "Memecoin transfer failed");
 
-        uint256 liquidity = IMiniUniswapV2(token.swapPool).addLiquidity();
+        uint256 liquidity = ILilUniswapV2(token.swapPool).addLiquidity();
 
         emit LiquidityAdded(tokenId, msg.sender, wberaAmount, memeAmount);
     }
@@ -105,7 +105,7 @@ contract HoneyTokenFactory is Owned {
 
         require(wbera.transferFrom(msg.sender, token.swapPool, wberaAmount), "WBERA transfer failed");
 
-        uint256 tokensBought = IMiniUniswapV2(token.swapPool).swapWBERAForToken(minTokens);
+        uint256 tokensBought = ILilUniswapV2(token.swapPool).swapWBERAForToken(minTokens);
 
         require(ERC20(token.token).transfer(msg.sender, tokensBought), "Token transfer failed");
     }
@@ -116,7 +116,7 @@ contract HoneyTokenFactory is Owned {
 
         require(ERC20(token.token).transferFrom(msg.sender, token.swapPool, tokenAmount), "Token transfer failed");
 
-        uint256 wberaBought = IMiniUniswapV2(token.swapPool).swapTokenForWBERA(tokenAmount, minWBERA);
+        uint256 wberaBought = ILilUniswapV2(token.swapPool).swapTokenForWBERA(tokenAmount, minWBERA);
 
         require(wbera.transfer(msg.sender, wberaBought), "WBERA transfer failed");
     }

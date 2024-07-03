@@ -8,7 +8,7 @@ interface IWBERA is IERC20 {
     function withdraw(uint256) external;
 }
 
-contract MiniUniswapV2Pool is ERC20 {
+contract LilUniswapV2 is ERC20 {
     IWBERA public immutable wbera;
     IERC20 public immutable token;
     uint public reserve0; // WBERA reserve
